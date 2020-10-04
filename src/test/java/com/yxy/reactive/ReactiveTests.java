@@ -5,13 +5,11 @@ import com.yxy.reactive.utils.UUIDUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -105,30 +103,91 @@ class ReactiveTests {
         // 2=[{"name":"2","sex":"Female"}]}}
     }
 
+    //Stream应用: 自定义收集器
     @Test
     void test_03_0() {
         String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
         String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-        List.of(strings).stream().map(String::hashCode).collect(StringBuilder::new, new BiConsumer<StringBuilder, Integer>() {
-            @Override
-            public void accept(StringBuilder stringBuilder, Integer s) {
-            }
-        }, new BiConsumer<StringBuilder, StringBuilder>() {
-            @Override
-            public void accept(StringBuilder stringBuilder, StringBuilder stringBuilder2) {
-            }
-        });
+        String s = List.of(strings).stream().map(String::hashCode)
+                .collect(new Supplier<String>() {
+                    @Override
+                    public String get() {
+                        return new String();//提供初始化的值
+                    }
+                }, new BiConsumer<String, Integer>() {
+                    @Override
+                    public void accept(String string, Integer i) {
+                        //string就是上面get()生成的值 , i就是前面map里的hashcode
+                        //注意 这是没有返回值的, 所以必须用 引用类型才行
+                    }
+                }, new BiConsumer<String, String>() {
+                    @Override
+                    public void accept(String strings, String string) {
+                        //strings就是最后返回的结果
+                        //string是前面所有map过后的string
+                    }
+                });
     }
 
+    //Stream应用: 自定义收集器 最后生成list 源码中四个R代表同一种类型
     @Test
     void test_03_1() {
         String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
         String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-        Map<String, Long> map = List.of(strings).stream().collect(Collectors.groupingBy(s -> s, Collectors.mapping(Function.identity(), Collectors.counting())));
+        ArrayList<String> list = List.of(strings).stream().map(String::hashCode)
+                .collect(new Supplier<ArrayList<String>>() {
+                    @Override
+                    public ArrayList<String> get() {
+                        return new ArrayList<String>();
+                    }
+                }, new BiConsumer<ArrayList<String>, Integer>() {
+                    @Override
+                    public void accept(ArrayList<String> objects, Integer e) {
+                        objects.add(String.valueOf(e));
+                    }
+                }, new BiConsumer<ArrayList<String>, ArrayList<String>>() {
+                    @Override
+                    public void accept(ArrayList<String> objects, ArrayList<String> c) {
+                        objects.addAll(c);
+                    }
+                });
+        System.out.println(list);
+        //[116, 104, 105, 115, 105, 109, 112, 108, 101, 109, 101, 110, 116, 97, 116, 105, 111, 110, 97, 115, 115, 117, 109, 101,
+        // 115, 116, 104, 97, 116, 116, 104, 101, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 109, 97, 112, 99, 97, 110, 110,
+        // 111, 116, 99, 111, 110, 116, 97, 105, 110, 110, 117, 108, 108, 118, 97, 108, 117, 101, 115, 97, 110, 100, 114, 101, 116,
+        // 117, 114, 110, 105, 110, 103, 110, 117, 108, 108, 117, 110, 97, 109, 98, 105, 103, 117, 111, 117, 115, 108, 121, 109, 101,
+        // 97, 110, 115, 116, 104, 101, 107, 101, 121, 105, 115, 97, 98, 115, 101, 110, 116]
     }
 
+    //Stream应用: 按照字符聚集, value收集器默认为list
     @Test
     void test_03_2() {
+        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
+        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
+        Map<String, List<String>> map = List.of(strings).stream().collect(Collectors.groupingBy(new Function<String, String>() {
+            @Override
+            public String apply(String s) {
+                return s;
+            }
+        }));
+        System.out.println(map);
+        //{a=[a, a, a, a, a, a, a, a, a, a, a], b=[b, b], c=[c, c, c, c], d=[d], e=[e, e, e, e, e, e, e, e, e, e, e], g=[g, g], h=[h, h, h, h],
+        // i=[i, i, i, i, i, i, i], k=[k], l=[l, l, l, l, l, l, l], m=[m, m, m, m, m, m], n=[n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n],
+        // o=[o, o, o, o, o], p=[p, p], r=[r, r, r, r], s=[s, s, s, s, s, s, s, s, s], t=[t, t, t, t, t, t, t, t, t, t, t, t], u=[u, u, u, u, u, u, u, u, u], v=[v], y=[y, y]}
+    }
+
+    //Stream应用: 按照字符聚集, value为统计数量, 默认为HashMap
+    @Test
+    void test_03_3() {
+        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
+        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
+        Map<String, Long> map = List.of(strings).stream().collect(Collectors.groupingBy(s -> s, Collectors.counting()));
+        //{a=11, b=2, c=4, d=1, e=11, g=2, h=4, i=7, k=1, l=7, m=6, n=16, o=5, p=2, r=4, s=9, t=12, u=9, v=1, y=2}
+    }
+
+    //Stream应用: 按照字符聚集, value为统计字符出现次数, 可以改收集器, Map类型
+    @Test
+    void test_03_4() {
         String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
         String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
         HashMap<String, Long> map = List.of(strings).stream().collect(Collectors.groupingBy(s -> s, HashMap::new, Collectors.mapping(Function.identity(), Collectors.counting())));
@@ -136,6 +195,41 @@ class ReactiveTests {
         //{a=11, b=2, c=4, d=1, e=11, g=2, h=4, i=7, k=1, l=7, m=6, n=16, o=5, p=2, r=4, s=9, t=12, u=9, v=1, y=2}
     }
 
+    //Stream应用: 按照字符聚集, value再收集, 可以改收集器, Map类型
+    @Test
+    void test_03_5() {
+        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
+        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
+        HashMap<String, Set<String>> map = List.of(strings).stream().collect(Collectors.groupingBy(s -> s, HashMap::new, Collectors.mapping(Function.identity(), Collectors.toSet())));
+        System.out.println(map);
+        //{a=[a], b=[b], c=[c], d=[d], e=[e], g=[g], h=[h], i=[i], k=[k], l=[l], m=[m], n=[n], o=[o], p=[p], r=[r], s=[s], t=[t], u=[u], v=[v], y=[y]}
+    }
+
+    //Stream应用: 支流操作 统计 以下四种效果一样
+    @Test
+    void test_03_6() {
+        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
+        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
+        long count = List.of(strings).stream().map(String::hashCode).count();
+        long count1 = List.of(strings).stream().map(String::hashCode).map(Function.identity()).count();
+        Long count2 = List.of(strings).stream().map(String::hashCode).collect(Collectors.counting());
+        Long count3 = List.of(strings).stream().map(String::hashCode).collect(Collectors.mapping(Function.identity(), Collectors.counting()));
+    }
+
+    //Stream应用: 总的统计
+    @Test
+    void test_03_7() {
+        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
+        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
+        IntSummaryStatistics summaryStatistics = List.of(strings).stream().mapToInt(String::hashCode).summaryStatistics();
+        System.out.println(summaryStatistics.getAverage());//108.4396551724138
+        System.out.println(summaryStatistics.getMax());//121
+        System.out.println(summaryStatistics.getMin());//97
+        System.out.println(summaryStatistics.getCount());//116
+        System.out.println(summaryStatistics.getSum());//12579
+    }
+
+    //Map的merge方法
     @Test
     void test_04() {
         HashMap<String, String> hashMap = new HashMap<>();
