@@ -2,32 +2,45 @@ package com.yxy.reactive;
 
 import com.yxy.reactive.model.Person;
 import com.yxy.reactive.utils.UUIDUtil;
+import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Stream的应用
+ * Created by Nuclear on 2020/10/7
+ */
 @SpringBootTest
-class ReactiveTests {
+@Log4j2
+public class StreamTest {
 
-    //Stream应用: 单词转成单词长度输出
+    //Stream应用: 基础
     @Test
-    void test_00() {
+    void test_00_1() {
+        //单词转成单词长度输出
         Stream.of("apple", "banana", "orange", "grape").map(String::length).forEach(System.out::println);
         // 5 6 6 5
+
+        //找到第一个
+        Optional<String> first = Stream.of("apple", "banana", "orange", "grape").findFirst();
+        System.out.println(first.get());//apple
+
+        //找到最大值
+        Optional<Integer> max = Stream.of(0, 9, 8, 4, 5, 6, -1).max(Integer::compareTo);
+        System.out.println(max.get());//9
     }
 
     //Stream应用: 过滤单词 转成大写字母 收集成List
     @Test
-    void test_01() {
+    void test_01_0() {
         Stream<String> stream = Stream.of("one", "two", "three", "four")
                 .filter(e -> e.length() > 3)
                 .peek(e -> System.out.print("Filtered value: " + e + " -> "))
@@ -37,6 +50,24 @@ class ReactiveTests {
         //Filtered value: four -> Upper value: FOUR
         System.out.println(stream.collect(Collectors.toList()));
         //[THREE, FOUR]
+    }
+
+    //Stream应用: flatMap的应用
+    @Test
+    void test_01_1() {
+        String[] strings = {"Hello", "World"};
+        //flatMap的效果
+        Stream<String> stream1 = Stream.of(strings);
+        Stream<String[]> stream2 = stream1.map(str -> str.split(""));
+        Stream<String> stream3 = stream1.flatMap(str -> Stream.of(str.split("")));
+        //与上面相等
+        Stream<String> stream4 = Stream.of("Hello", "World");
+        Stream<String[]> stream5 = stream4.map(str -> str.split(""));
+        Stream<String> stream6 = stream4.flatMap(str -> Stream.of(str.split("")));
+        //与上面相等
+        Stream<List<String>> stream7 = Stream.of(List.of(strings));
+        Stream<String[]> stream8 = stream7.map(list -> list.toArray(String[]::new));
+        Stream<String> stream9 = stream7.flatMap(list -> Stream.of(list.toArray(String[]::new)));
     }
 
     //Stream应用: 根据性别聚集person
@@ -81,7 +112,7 @@ class ReactiveTests {
         // bc4k7rhN={"name":"bc4k7rhN","sex":"Female"}}
     }
 
-    //Stream应用: 根据性别聚集 内部继续根据name聚集 理论上可以无限聚集
+    //Stream应用: 根据性别聚集person 内部继续根据name聚集 理论上可以无限聚集
     @Test
     void test_02_2() {
         ArrayList<Person> people = new ArrayList<>();
@@ -120,13 +151,14 @@ class ReactiveTests {
                     @Override
                     public void accept(String string, Integer i) {
                         //string就是上面get()生成的值 , i就是前面map里的hashcode
-                        //注意 这是没有返回值的, 所以必须用 引用类型才行
+                        //注意 这是没有返回值的, 所以必须用 引用类型 才行
                     }
                 }, new BiConsumer<String, String>() {
                     @Override
                     public void accept(String strings, String string) {
                         //strings就是最后返回的结果
                         //string是前面所有map过后的string
+                        //注意 这是没有返回值的, 所以必须用 引用类型 才行
                     }
                 });
     }
@@ -184,12 +216,13 @@ class ReactiveTests {
         String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
         String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
         Map<String, Long> map = List.of(strings).stream().collect(Collectors.groupingBy(s -> s, Collectors.counting()));
+        System.out.println(map);
         //{a=11, b=2, c=4, d=1, e=11, g=2, h=4, i=7, k=1, l=7, m=6, n=16, o=5, p=2, r=4, s=9, t=12, u=9, v=1, y=2}
     }
 
     //Stream应用: 按照字符聚集, value为统计字符出现次数, 可以改收集器, Map类型
+    //people.stream().collect(groupingBy(Person::getCity, mapping(Person::getLastName, toSet())));
     @Test
-//people.stream().collect(groupingBy(Person::getCity, mapping(Person::getLastName, toSet())));
     void test_03_4() {
         String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
         String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
@@ -230,174 +263,5 @@ class ReactiveTests {
         System.out.println(summaryStatistics.getMin());//97
         System.out.println(summaryStatistics.getCount());//116
         System.out.println(summaryStatistics.getSum());//12579
-    }
-
-    //Map的merge方法
-    @Test
-    void test_04_0() {
-        HashMap<String, String> hashMap = new HashMap<>();
-        hashMap.put("孙悟空", "花果山");
-        hashMap.merge("孙悟空", " 水帘洞", new BiFunction<String, String, String>() {
-            @Override
-            public String apply(String oldValue, String str) {
-                return oldValue.concat(str);
-            }
-        });
-        hashMap.merge("猪八戒", "天河", String::concat);
-        System.out.println(hashMap);
-        //{孙悟空=花果山 水帘洞, 猪八戒=天河}
-
-        HashMap<String, Long> map = new HashMap<>();
-        map.put("tom", 1L);
-        // map.merge("tom", 13L, Long::sum);
-        map.merge("jerry", -6L, new BiFunction<Long, Long, Long>() {
-            @Override
-            public Long apply(Long a, Long b) {
-                return Long.sum(a, b);
-            }
-        });
-        System.out.println(map);
-        //{tom=14, jerry=-6}
-    }
-
-    //Map的merge方法统计字符出现的次数
-    @Test
-    void test_04_1() {
-        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
-        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-
-        HashMap<String, Long> hashMap = new HashMap<>();
-        for (String s : strings) {
-            hashMap.merge(s, 1L, Long::sum);
-        }
-        System.out.println(hashMap);
-        //{a=11, b=2, c=4, d=1, e=11, g=2, h=4, i=7, k=1, l=7, m=6, n=16, o=5, p=2, r=4, s=9, t=12, u=9, v=1, y=2}
-    }
-
-    //Map的merge方法统计字符
-    @Test
-    void test_04_2() {
-        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
-        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-
-        HashMap<String, ArrayList<String>> hashMap = new HashMap<>();
-        for (String s : strings) {
-            hashMap.merge(s, new ArrayList<>(List.of(s)), new BiFunction<ArrayList<String>, ArrayList<String>, ArrayList<String>>() {
-                @Override
-                public ArrayList<String> apply(ArrayList<String> old, ArrayList<String> value) {
-                    old.addAll(value);
-                    return old;
-                }
-            });
-        }
-        System.out.println(hashMap);
-        //{a=[a, a, a, a, a, a, a, a, a, a, a], b=[b, b], c=[c, c, c, c], d=[d], e=[e, e, e, e, e, e, e, e, e, e, e], g=[g, g],
-        // h=[h, h, h, h], i=[i, i, i, i, i, i, i], k=[k], l=[l, l, l, l, l, l, l], m=[m, m, m, m, m, m],
-        // n=[n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n], o=[o, o, o, o, o], p=[p, p], r=[r, r, r, r], s=[s, s, s, s, s, s, s, s, s],
-        // t=[t, t, t, t, t, t, t, t, t, t, t, t], u=[u, u, u, u, u, u, u, u, u], v=[v], y=[y, y]}
-    }
-
-    //Map的computeIfAbsent 统计字符
-    @Test
-    void test_05_0() {
-        //生成字符数组
-        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
-        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-
-        HashMap<String, ArrayList<String>> hashMap = new HashMap<>();
-        //计算加入list
-        for (String s : strings) {
-            hashMap.computeIfAbsent(s, k -> new ArrayList<>()).add(s);
-        }
-        System.out.println(hashMap);
-        //{a=[a, a, a, a, a, a, a, a, a, a, a], b=[b, b], c=[c, c, c, c], d=[d], e=[e, e, e, e, e, e, e, e, e, e, e], g=[g, g],
-        // h=[h, h, h, h], i=[i, i, i, i, i, i, i], k=[k], l=[l, l, l, l, l, l, l], m=[m, m, m, m, m, m],
-        // n=[n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n], o=[o, o, o, o, o], p=[p, p], r=[r, r, r, r], s=[s, s, s, s, s, s, s, s, s],
-        // t=[t, t, t, t, t, t, t, t, t, t, t, t], u=[u, u, u, u, u, u, u, u, u], v=[v], y=[y, y]}
-    }
-
-    //Map的computeIfAbsent 统计字符出现的次数
-    @Test
-    void test_05_1() {
-        //生成字符数组
-        String str = "This implementation assumes that the ConcurrentMap cannot contain null values and returning null unambiguously means the key is absent";
-        String[] strings = str.replaceAll(" ", "").toLowerCase().split("");
-
-        HashMap<String, AtomicLong> hashMap = new HashMap<>();
-        //计算加入list
-        for (String s : strings) {
-            hashMap.computeIfAbsent(s, k -> new AtomicLong(1L)).incrementAndGet();
-        }
-        System.out.println(hashMap);
-        //{a=12, b=3, c=5, d=2, e=12, g=3, h=5, i=8, k=2, l=8, m=7, n=17, o=6, p=3, r=5, s=10, t=13, u=10, v=2, y=3}
-    }
-
-    @Test
-    void test_06() {
-    }
-
-    @Test
-    void test_07() {
-
-    }
-
-    @Test
-    void test_08() {
-
-    }
-
-    @Test
-    void test_09() {
-
-    }
-
-    @Test
-    void test_10() {
-
-    }
-
-    @Test
-    void test_11() {
-
-    }
-
-    @Test
-    void test_12() {
-
-    }
-
-    @Test
-    void test_13() {
-
-    }
-
-    @Test
-    void test_14() {
-
-    }
-
-    @Test
-    void test_15() {
-
-    }
-
-    @Test
-    void test_16() {
-
-    }
-
-    @Test
-    void test_17() {
-
-    }
-
-    @Test
-    void test_18() {
-
-    }
-
-    @Test
-    void test_19() {
-
     }
 }
