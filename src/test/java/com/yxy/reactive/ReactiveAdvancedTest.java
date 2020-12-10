@@ -2,10 +2,13 @@ package com.yxy.reactive;
 
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -14,6 +17,8 @@ import java.util.List;
 @SpringBootTest
 @Log4j2
 public class ReactiveAdvancedTest {
+
+    private Logger logger = LoggerFactory.getLogger(ReactiveAdvancedTest.class);
 
     //Flux和Mono互转
     @SuppressWarnings("ReactorUnusedPublisher")
@@ -275,7 +280,48 @@ public class ReactiveAdvancedTest {
     }
 
     @Test
-    void test_06() {
+    void test_06_01() {
+        Mono.just("repeat").repeat(2, () -> true).subscribe(System.out::println);
+        //repeat
+        //repeat
+        //repeat
+    }
 
+    @Test
+    void test_06_02() {
+        //原来一个，再取3个，一共四个
+        Mono.just("repeat").repeatWhen(longFlux -> longFlux.take(3)).subscribe(System.out::println);
+        //repeat
+        //repeat
+        //repeat
+        //repeat
+
+        //如果repeatWhen直接返回empty，那什么都输出不了
+        Mono.just("empty").repeatWhen(longFlux -> Mono.empty()).subscribe(System.out::println);
+
+        //当empty的时候不重复，不empty就重复
+        Mono.just("repeatEmpty").repeatWhen(longFlux -> Flux.range(1, 5).flatMap(i -> {
+            if ((i & 1) == 1) {
+                return Mono.<Integer>empty();
+            } else {
+                return Mono.just(i);//2 4
+            }
+        })).subscribe(System.out::println);
+        //repeatEmpty
+        //repeatEmpty
+        //repeatEmpty
+    }
+
+    @Test
+    void test_06_03() throws InterruptedException {
+        Flux.interval(Duration.ofMillis(250))
+                .map(input -> {
+                    if (input < 3) return "tick " + input;
+                    throw new RuntimeException("boom");
+                })
+                .elapsed()
+                .retry(2)
+                .subscribe(System.out::println, System.err::println);
+        Thread.sleep(5100);
     }
 }
