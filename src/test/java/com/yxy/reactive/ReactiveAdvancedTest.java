@@ -1,6 +1,7 @@
 package com.yxy.reactive;
 
 import lombok.extern.log4j.Log4j2;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -232,6 +233,23 @@ public class ReactiveAdvancedTest {
         Mono.justOrEmpty(o).switchIfEmpty(Mono.just(1))
                 .subscribe(System.out::println);
         //输出1
+    }
+
+    //switch的特殊测试
+    @RepeatedTest(value = 2)
+    void test_03_09() {
+        Mono.just("1").map(s -> {
+            System.out.println("2");
+            return s;
+        }).switchIfEmpty(method()).subscribe(System.out::println);
+    }
+
+    private static Mono<String> method() {
+        System.out.println("3");//会直接被调用，原理未知
+        return Mono.just("4").map(s -> {
+            System.out.println(s);
+            return s;
+        });
     }
 
     //内存分页

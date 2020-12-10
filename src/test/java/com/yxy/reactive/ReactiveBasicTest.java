@@ -395,4 +395,15 @@ class ReactiveBasicTest {
         }).subscribe(System.out::println);
         //[81, 33, 69, 34, 92, 89, 36, 94, 57, 71]
     }
+
+    //同步的世界
+    @Test
+    void test_13() {
+        Flux.range(1, 10).toStream();
+        Flux.range(1, 10).toIterable();
+        Flux.range(1, 10).blockFirst();
+        Flux.range(1, 10).blockLast();
+        Mono.just(1).block();
+        Mono.just(1).blockOptional();
+    }
 }
