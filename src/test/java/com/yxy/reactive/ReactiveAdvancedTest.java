@@ -342,4 +342,37 @@ public class ReactiveAdvancedTest {
                 .subscribe(System.out::println, System.err::println);
         Thread.sleep(5100);
     }
+
+    @Test
+    void test_07_01() {
+        try {
+            handle().map(x -> {
+                throw new RuntimeException();
+            }).subscribe();
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+        }
+        System.out.println(count);
+    }
+
+    private int count = 0;
+
+    Mono<Integer> handle() {
+        return find().map(i -> i * 2);
+    }
+
+    Mono<Integer> find() {
+        return Mono.<Integer>empty().switchIfEmpty(Mono.just(1).doOnNext(i -> {
+            Mono.just(i).map(integer -> {
+                try {
+                    System.out.println(Thread.currentThread().getName());
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                count = i;
+                return count;
+            }).subscribe();
+        }));
+    }
 }
