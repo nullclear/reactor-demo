@@ -11,7 +11,7 @@
     <groupId>com.yxy</groupId>
     <artifactId>reactive</artifactId>
     <version>1.0.0</version>
-    <name>ReactiveDemo</name>
+    <name>reactor-demo</name>
     <description>测试reactor相关api</description>
 
     <properties>
